@@ -19,8 +19,11 @@ sampleType=sys.argv[4]
 df=pd.read_csv(keyFile, header=None)
 
 if sampleType == "T":
-
-    bamID=df[df.iloc[:,0].str.contains(sampleID)].iloc[:,1].values[0]
+    try: 
+        bamID=df[df.iloc[:,0].str.contains(sampleID)].iloc[:,1].values[0]
+    except :
+        print(f"Error: bamID not found for {sampleID}", file = sys.stderr)
+        sys.exit(1)
     #print(bamID)
 
 elif sampleType == "N":
@@ -29,7 +32,11 @@ elif sampleType == "N":
     ID[2]='N..'
     ID_N='-'.join(ID)
 
-    bamID=df[df.iloc[:,0].str.contains(ID_N)].iloc[:,1].values[0]
+    try :
+        bamID=df[df.iloc[:,0].str.contains(ID_N)].iloc[:,1].values[0]
+    except :
+        print(f"Error: bamID not found for {ID_N}", file = sys.stderr)
+        sys.exit(1)
     #print(bamID)
 
 bamFilePath=os.path.join(bamMirrorPath,bamID[0],bamID[1],bamID + ".bam")

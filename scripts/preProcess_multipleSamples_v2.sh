@@ -1,18 +1,23 @@
 #!/bin/bash
+#source /home/sumans/miniconda2/bin/activate gddP2
+source /home/yuk3/miniconda3/bin/activate ecDNA
 
-source /home/sumans/miniconda2/bin/activate gddP2
-#conda activate gddP2
 
 set -euo pipefail
 
 # Sequencing Type - WGS or IMPACT
 #seqType="IMPACT"
 #seqType="WES"
+CONFIG_FILE=$1
+shift
+
 seqType=$1
 shift
 
 i=$1;
 shift
+
+ts=$(date +%Y%m%d%H%M%S)
 
 # bamMirrorPath_impact="/juno/res/dmpcollab/dmpshare/share/irb12_245"
 bamMirrorPath_impact="/juno/dmp/share/irb12_245"
@@ -23,10 +28,6 @@ bedNameImage_wes="xgen-exome-research-panel-v2-targets-hg19-no-chr.bed"
 
 if [[ "$seqType" == "IMPACT" ]]; then
 
-#  for i in $(cat $outputManifestPath| tail -n +2 | awk -F "\t" '{print $1"_"$25}'); do
-
-   # For Tumor Sample
-          # sampleTypeTumor=$j
       sampleID_Tumor=$(echo "$i" | awk -F'_' '{print $1}')
       tp=$(echo "$i" | awk -F'_' '{print $2}')
       tumor_Purity=$(echo "scale=1 ; $tp / 100"| bc)
@@ -53,14 +54,6 @@ if [[ "$seqType" == "IMPACT" ]]; then
 
       fi
 
-      # if [[ "$impactPanel" == "IM3" ]] || [[ "$impactPanel" == "IM5" ]] || [[ "$impactPanel" == "IM6" ]]; then
-      #   refFile="b37.fasta"
-      # elif [[ "$impactPanel" == "IM7" ]]; then
-      #   refFile="GRCh37_plus_virus.fa"
-      # fi
-
-      # bamID_Tumor=${sampleID_Tumor}
-
    # For Normal Paired Sample
       sampleID_Normal=$(python convertT2N.py --sID "$sampleID_Tumor" --aType impact_N)
       # bamID_Normal=${sampleID_Normal}
@@ -73,6 +66,7 @@ if [[ "$seqType" == "IMPACT" ]]; then
       date
 
       cmd="sh preProcess_v2.sh \
+      $CONFIG_FILE \
       $bamMirrorPath_impact \
       $sampleID_Tumor \
       $sampleID_Normal \
@@ -90,58 +84,59 @@ if [[ "$seqType" == "IMPACT" ]]; then
       echo
       echo
 
-
-elif [[ "$seqType" == "WES" ]]; then
-
-  for i in $(cat $outputManifestPath| tail -n +2 | awk '{print $1"_"$3}'); do
-
-    for j in N T; do
-
-      if [[ "$j" == "T" ]]; then
-        #echo $i
-        sampleType=$j
-        sampleID=$(echo $i | awk -F'_' '{print $1}')
-        cmoID=$(echo $i | awk -F'_' '{print $2}')
-        bamID=$(python convertT2N.py --sID $cmoID --aType WES)
-
-      elif [[  "$j" == "N" ]]; then
-        sampleType=$j
-        sampleID_T=$(echo $i | awk -F'_' '{print $1}')
-        sampleID=$(python convertT2N.py --sID $sampleID_T --aType impact_N)
-        cmoID=$(echo $i | awk -F'_' '{print $2}')
-        bamID_T=$(python convertT2N.py --sID $cmoID --aType WES)
-        bamID=$(python convertT2N.py --sID $bamID_T --aType WES_P --mapFile $mapFile_wes_Path)
-
-      fi
-
-      echo "Sample=$sampleID"
-      cmd="sh preProcess_v2.sh \
-            $bamMirrorPath_wes \
-            $sampleID \
-            $bedName_wes \
-            $bedNameImage_wes \
-            $seqType \
-            $sampleType \
-            $bamID \
-            $refFile"
-
-      echo $cmd
-      echo
-      #echo "hello"
-
-      eval ${cmd}
-
-
-      echo "Done"
-      echo
-      echo
-
-
-    done
-
-  done
-
 fi
+# elif [[ "$seqType" == "WES" ]]; then
+
+#   for i in $(cat $outputManifestPath| tail -n +2 | awk '{print $1"_"$3}'); do
+
+#     for j in N T; do
+
+#       if [[ "$j" == "T" ]]; then
+#         #echo $i
+#         sampleType=$j
+#         sampleID=$(echo $i | awk -F'_' '{print $1}')
+#         cmoID=$(echo $i | awk -F'_' '{print $2}')
+#         bamID=$(python convertT2N.py --sID $cmoID --aType WES)
+
+#       elif [[  "$j" == "N" ]]; then
+#         sampleType=$j
+#         sampleID_T=$(echo $i | awk -F'_' '{print $1}')
+#         sampleID=$(python convertT2N.py --sID $sampleID_T --aType impact_N)
+#         cmoID=$(echo $i | awk -F'_' '{print $2}')
+#         bamID_T=$(python convertT2N.py --sID $cmoID --aType WES)
+#         bamID=$(python convertT2N.py --sID $bamID_T --aType WES_P --mapFile $mapFile_wes_Path)
+
+#       fi
+
+#       echo "Sample=$sampleID"
+#       cmd="sh preProcess_v2.sh \
+#             $CONFIG_FILE \
+#             $bamMirrorPath_wes \
+#             $sampleID \
+#             $bedName_wes \
+#             $bedNameImage_wes \
+#             $seqType \
+#             $sampleType \
+#             $bamID \
+#             $refFile"
+
+#       echo $cmd
+#       echo
+#       #echo "hello"
+
+#       eval ${cmd}
+
+
+#       echo "Done"
+#       echo
+#       echo
+
+
+#     done
+
+#   done
+
+# fi
 
 
 

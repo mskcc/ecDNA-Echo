@@ -10,29 +10,30 @@ import numpy as np
 from facetsAPI import *
 
 
-def get_sample_report(useSingleRun, allowDefaults, sampleList, sampleReport):
-    clinical_sample_file="/home/sumans/Projects/Project_BoundlessBio/data/input/data_clinical_sample.oncokb.txt"
-    facets_dir="/work/ccs/shared/resources/impact/facets/all/"
+# def get_sample_report(useSingleRun, allowDefaults, sampleList, sampleReport, dataDir):
+#     clinical_sample_file= dataDir + "/input/data_clinical_sample.oncokb.txt"
+#     facets_dir="/work/ccs/shared/resources/impact/facets/all/"
 
-    #Initialize FacetsMeta. This will build all relevant metadata we need going forward.
-    prepared_metadata = FacetsMeta(clinical_sample_file, facets_dir, "purity")
+#     #Initialize FacetsMeta. This will build all relevant metadata we need going forward.
+#     prepared_metadata = FacetsMeta(clinical_sample_file, facets_dir, "purity")
     
-    #We just want to look at a single run per sample, looking for best/acceptable fits. Default is acceptable if not.
-    prepared_metadata.setSingleRunPerSample(useSingleRun,allowDefaults)
+#     #We just want to look at a single run per sample, looking for best/acceptable fits. Default is acceptable if not.
+#     prepared_metadata.setSingleRunPerSample(useSingleRun,allowDefaults)
     
-    #Read in the list of IDs we are selecting from a file. One sample per line.
-    prepared_metadata.selectSamplesFromFile(sampleList)
+#     #Read in the list of IDs we are selecting from a file. One sample per line.
+#     prepared_metadata.selectSamplesFromFile(sampleList)
     
-    #Build our FacetsMeta Object.
-    prepared_metadata.buildFacetsMeta()
+#     #Build our FacetsMeta Object.
+#     prepared_metadata.buildFacetsMeta()
 
-    #Build our FacetsDataset Object and write a report to file.
-    test_dataset = FacetsDataset(prepared_metadata)
-    test_dataset.buildFacetsDataset()
-    test_dataset.writeReport(sampleReport)
+#     #Build our FacetsDataset Object and write a report to file.
+#     test_dataset = FacetsDataset(prepared_metadata)
+#     test_dataset.buildFacetsDataset()
 
-def get_selected_genes(useSingleRun, allowDefaults, target_sample_id, target_gene_list, geneReport):
-    clinical_sample_file="/home/sumans/Projects/Project_BoundlessBio/data/input/data_clinical_sample.oncokb.txt"
+#     test_dataset.writeReport(sampleReport)
+
+def get_selected_genes(useSingleRun, allowDefaults, target_sample_id, target_gene_list, geneReport, dataDir):
+    clinical_sample_file= dataDir + "/input/data_clinical_sample.oncokb.txt"
     facets_dir="/work/ccs/shared/resources/impact/facets/all/"
 
     prepared_metadata = FacetsMeta(clinical_sample_file, facets_dir, "hisens")
@@ -51,6 +52,7 @@ def get_selected_genes(useSingleRun, allowDefaults, target_sample_id, target_gen
     for target_sample in prepared_metadata.samples_from_file:
         if target_sample not in found_runs:
             print("Missing: " + target_sample)
+
 
     #Loop over our gene objects and print out what we want.
     with open(geneReport, 'a') as outfile:
@@ -84,6 +86,7 @@ def get_selected_genes(useSingleRun, allowDefaults, target_sample_id, target_gen
 
 if __name__ == '__main__':
 
+
     # sampleList="/home/sumans/Projects/Project_BoundlessBio/data/facetsAPI_testing/FileB_export_ecDNATracker_records_230818160357.txt"
     # echoReportFile="/home/sumans/Projects/Project_BoundlessBio/data/facetsAPI_testing/merged.ECHO_results.csv"
     # sampleReport="/home/sumans/Projects/Project_BoundlessBio/data/facetsAPI_testing/sample_report_final_1.txt"
@@ -94,7 +97,8 @@ if __name__ == '__main__':
     echoReportFile=sys.argv[2]
     sampleReport=sys.argv[3]
     geneReport=sys.argv[4]
-    get_sample_report(True, True, sampleList, sampleReport)
+    dataDir=sys.argv[5]
+    # get_sample_report(True, True, sampleList, sampleReport, dataDir)
 
     with open(geneReport, 'w') as outfile:
         outfile.write("sample\tgene\tgene_start\tgene_end\tseg_start\tseg_end\tseg_length\tcf\ttcn\tlcn\tcn_state\tfilter\ttsg\tseg\tmedian_cnlr_seg\tsegclust\tmcn\tgenes_on_seg\tgene_snps\tgene_het_snps\tspans_segs" + "\n")
@@ -110,4 +114,4 @@ if __name__ == '__main__':
         if gene:
 
             # get_selected_genes(True, True,"P-0001631-T03-IM6",["TP53"])
-            get_selected_genes(True, True, sampleID, gene, geneReport)
+            get_selected_genes(True, True, sampleID, gene, geneReport, dataDir)

@@ -1,39 +1,49 @@
 #!/bin/bash
 
-dataDir=/juno/cmo/bergerlab/sumans/Project_BoundlessBio/data
+# config file
+CONFIG_FILE=$1
+source $CONFIG_FILE
 
-logDir=${dataDir}/log/log_8/facets_api_pull
-# logDir=${dataDir}/log/log.Legacy/log_BB_EchoCaller_SteveMaron_HER2_Dec2023/facets_api_pull
+################################
+# set up using the config file #
+################################
 
-inputDir=${dataDir}/input
-manifestDir=${inputDir}/manifest/BB_EchoCaller_GE_Matteo_May2024
-sampleListFile=${manifestDir}/FileB_export_ecDNATracker_records_240524135232.txt
+# Directories
+dataDir=$dataDirectory
+inputDir=$inputDirectory
+manifestDir=$manifestDirectory
+logDir=$facetsLogDirectory
+outputDir=$facetsOutputDirectory
+flagDir=$facetsFlagDirectory
 
-outputDir=${dataDir}/output/output_8
-# outputDir=${dataDir}/output/output.Legacy/output_BB_EchoCaller_SteveMaron_HER2_Dec2023
+mkdir -p "$flagDir" 2>/dev/null
+mkdir -p "$logDir" 2>/dev/null
+mkdir -p "$outputDir" 2>/dev/null
 
-echoReportFile=${outputDir}/merged.ECHO_results.csv
+if [[ $clusterTime != *:* ]]; then
+    clusterTime="${clusterTime}:00"
+fi
 
-sampleReport="${outputDir}/sample_report_facets.txt"
-geneReport="${outputDir}/gene_report_facets.txt"
+#################################
 
-mkdir -p $logDir 2>/dev/null
-
+echoReportFile=${mergedOutputDirectory}/merged.ECHO_results.csv
 ts=$(date +%Y%m%d%H%M%S)
 
+if [ -f "$echoReportFile" ]; then
 
+    cmd="bsub \
+        -W ${clusterTime} \
+        -n ${clusterCPUNum} \
+        -R 'rusage[mem=${clusterMemory}]' \
+        -J 'facets_driver' \
+        -o '${logDir}/facets_multiple_call_${ts}.stdout' \
+        -e '${logDir}/facets_multiple_call_${ts}.stderr' \
+        sh submit_facets_multipleSamples.sh ${CONFIG_FILE}"
+    echo "$cmd"
+    eval $cmd
 
-cmd="bsub \
--W 96:00 \
--n 4 \
--R 'rusage[mem=64]' \
--J 'facets_api_pull' \
--o '${logDir}/facets_api_pull_${ts}.stdout' \
--e '${logDir}/facets_api_pull_${ts}.stderr' \
-python3.8 ./Test_facetsApiPull.py ${sampleListFile} ${echoReportFile} ${sampleReport} ${geneReport}"
+else
+    echo "Generate merged ECHO report first. Aborting"
+fi
 
-
-echo "$cmd"
-eval "$cmd"
-echo
 

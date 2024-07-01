@@ -1,0 +1,87 @@
+#!/bin/bash
+
+#################################################
+#                                               #
+# Default config file for ecDNA IMPACT analysis #
+#                                               #
+#################################################
+
+projectName="BB_EchoCaller_Facets_Rerun_Ewing_DSRCT"
+
+###############
+# directories #
+###############
+
+# Directory containing input folder
+dataDirectory="/juno/cmo/bergerlab/yuk3/Project_ecDNA/data"
+
+# Directory containing inputs
+inputDirectory="${dataDirectory}/input"
+
+# Manifest directory
+manifestDirectory="${inputDirectory}/manifest/${projectName}"
+
+# Output, log and flag directories
+outputDirectory="${dataDirectory}/output/output_${projectName}"
+logDirectory="${dataDirectory}/log/log_${projectName}"
+flagDirectory="${dataDirectory}/flag/flag_${projectName}"
+
+# For the initial echo calls
+echoOutputDirectory="${outputDirectory}/echoCalls"
+echoLogDirectory="${logDirectory}/echoCalls"
+echoFlagDirectory="${flagDirectory}/echoCalls"
+
+# For the merged files
+mergedOutputDirectory="${outputDirectory}/merged"
+
+# For facets sample calls
+sampleFacetsDirectory="${outputDirectory}/sampleFacets"
+
+# For facets gene calls
+facetsOutputDirectory="${outputDirectory}/facetsCalls"
+facetsLogDirectory="${logDirectory}/facetsCalls"
+facetsFlagDirectory="${flagDirectory}/facetsCalls"
+
+###########
+# samples #
+###########
+
+# Subset of samples to use
+sampleFull="${manifestDirectory}/FileB.tsv"
+
+# Files that will be created
+sampleInfoFull="${manifestDirectory}/FileA.tsv"
+sampleSubset="${manifestDirectory}/FileB_run.tsv"
+sampleInfoSubset="${manifestDirectory}/FileA_run.tsv"
+
+# Columns of information in the sampleTracker (0 indexed)
+sampleIDColumn=0
+tumorPurityColumn=1
+somaticStatusColumn=2
+
+# True if we want to use facets purity instead of pathology (True or False)
+useFacetsPurity=True
+defaultPurity=20
+
+# Analysis type (1 or 2)
+aType=1
+seqType=IMPACT
+
+###############
+# clusterInfo #
+###############
+
+# Number of CPUs
+clusterCPUNum=4
+
+# Memory per CPU
+clusterMemory=64
+
+# Allotted time (format: 72:00 -> 72 hours or 72 -> 72 hours)
+clusterTime="72"
+
+####################################
+# Access to cBioPortal Private API #
+####################################
+
+dataAccessToken="/home/yuk3/cbioportal_data_access_token.txt"

@@ -1,86 +1,121 @@
 #!/bin/bash
 
-# dataDir=/rtsess01/compute/juno/cmo/juno/work/bergerm1/bergerlab/sumans/Project_BoundlessBio/data
-dataDir=/juno/cmo/bergerlab/sumans/Project_BoundlessBio/data
-inputDir=${dataDir}/input
-manifestDir=${inputDir}/manifest/BB_EchoCaller_GE_Matteo_May2024
-logDir=${dataDir}/log/log_8
+# config file
+CONFIG_FILE=$1
+source $CONFIG_FILE
 
-mkdir -p $logDir 2>/dev/null
+################################
+# set up using the config file #
+################################
+
+# Directories
+dataDir=$dataDirectory
+manifestDir=$manifestDirectory
+inputDir=$inputDirectory
+
+mkdir -p $sampleFacetsDirectory 2>/dev/null
+mkdir -p $mergedOutputDirectory 2>/dev/null
+
+# Manifest doc
+sampleTrackerFile=$sampleInfoSubset
+sampleTrackerFull=$sampleInfoFull
+sampleSubset=$sampleSubset
+sampleFull=$sampleFull
+facetsPurity=$useFacetsPurity
+defaultPurity=$defaultPurity
+
+# Cluster stats
+clusterCPUNum=$clusterCPUNum
+clusterMemory=$clusterMemory
+clusterTime=$clusterTime
+if [[ $clusterTime != *:* ]]; then
+    clusterTime="${clusterTime}:00"
+fi
+
+# Sample facets location
+sampleReportFacetsName="${sampleFacetsDirectory}/sample_report_facets.txt"
+sampleReportFacetsNameFull="${sampleFacetsDirectory}/sample_report_facets_full.txt"
+
+################################
 
 ts=$(date +%Y%m%d%H%M%S)
 
-aType=1
+echo "Creating Manifest..."
+cmd="python3.8 ./cBioPortalApiPull.py $dataAccessToken $sampleFull $sampleSubset $sampleTrackerFull $sampleTrackerFile $defaultPurity"
+echo "$cmd"
+eval $cmd
+echo
 
-sampleTrackerFile="FileA_export_ecDNATracker_records_240524135226.xlsx"
-subsetFile="FileB_export_ecDNATracker_records_240524135232.xlsx"
-# mapFile_wes="MSKWESRP.pairing.tsv"
-
-# Column number of Sample ID inside manifest file. If the column number is 2, the index will be 1
-sampleIDColumn=0
-tumorPurityColumn=1
-somaticStatusColumn=2
-
-sampleTrackerFilePath=${manifestDir}/${sampleTrackerFile}
-subsetFilePath=${manifestDir}/${subsetFile}
-# mapFile_wes_Path=${manifestDir}/${mapFile_wes}
-
+# child directory paths
 outputManifest="sampleManifest_${ts}_${aType}.txt"
 outputManifestPath=${manifestDir}/${outputManifest}
 
+if [[ $sampleSubset == *.xlsx ]]; then
+    echo "Converting Sample List to txt"
+    txt_name="${sampleSubset%.xlsx}.txt"
+    xlsx2csv "${sampleSubset}" | sed '/^""$/d' > "${txt_name}"
+    sampleSubset=$txt_name
 
-if [[ ! -f $outputManifest ]] && [[ "$aType" == 1 ]]; then
-    # cmd="python3.8 generateManifest.py --impactPanel $impactPanel --sampleManifest $sampleTrackerFilePath --outputFile $outputManifestPath --aType $aType"
+fi
 
-    cmd="python3.8 generateManifest.py --sampleManifest $sampleTrackerFilePath --outputFile $outputManifestPath --subsetFile $subsetFilePath --aType $aType --sampleIDColumn $sampleIDColumn"
+# Create facets sample document
+mergedOutputFull=${mergedOutputDirectory}/facets_cbioportal_merged_full.tsv
+mergedOutput=${mergedOutputDirectory}/facets_cbioportal_merged.tsv
+
+echo "Creating facets sample"
+cmd="python3.8 generateFacetsSampleReport.py --fullFile $sampleFull --subsetFile $sampleSubset --outputFile $sampleReportFacetsName --outputFileFull $sampleReportFacetsNameFull --dataDirectory $dataDir --fullInfo $sampleInfoFull --subsetInfo $sampleInfoSubset --mergedOutputFull $mergedOutputFull --mergedOutput $mergedOutput"
+echo "$cmd"
+eval "$cmd"
+echo
+
+# If using facets purity change 
+if [[ $facetsPurity == True ]]; then
+    echo "Using facets purity"
+    echo "New File location: ${sampleTrackerFile}.facets.tsv"
+    newManifest="${sampleTrackerFile}.facets.tsv"
+    cmd="python3.8 generateFacetsManifest.py --sampleManifest $sampleTrackerFile --subsetFile $sampleSubset --outputFile $newManifest --facetsReport $sampleReportFacetsName --sampleIDColumn $sampleIDColumn --samplePurityColumn $tumorPurityColumn --defaultPurity $defaultPurity"
     echo "$cmd"
     eval "$cmd"
     echo
 
+    sampleTrackerFile=$newManifest
+fi
 
-elif [[ ! -f $outputManifest ]] && [[ "$aType" == 2 ]]; then
-    cmd="python3.8 generateManifest.py --impactPanel $impactPanel --sampleManifest $sampleTrackerFilePath --outputFile $outputManifestPath --subsetFile $subsetFilePath --aType $aType --sampleIDColumn $sampleIDColumn"
+if [[ ! -f $outputManifest ]]; then
+    cmd="python3.8 generateManifest_v2.py --sampleManifest $sampleTrackerFile --outputFile $outputManifestPath --subsetFile $sampleSubset --aType $aType --sampleIDColumn $sampleIDColumn"
     echo "$cmd"
     eval "$cmd"
+    echo
 
 fi
 
+# Counts the number of jobs
 count=0;
 
-# for seqType in IMPACT WES; do
-for seqType in IMPACT; do
+mkdir -p $echoLogDirectory 2>/dev/null
+for i in $(cat "$outputManifestPath" | awk -F "\t" -v sampleIDColumn=$(expr $sampleIDColumn + 1) -v tumorPurityColumn=$(expr $tumorPurityColumn + 1) -v somaticStatusColumn=$(expr $somaticStatusColumn + 1) '{print $sampleIDColumn"_"$tumorPurityColumn"_"$somaticStatusColumn}'); do
 
-  if [[ "$seqType" == "IMPACT" ]]; then
+  sampleID_Tumor=$(echo "$i" | awk -F'_' '{print $1}')
 
-    for i in $(cat "$outputManifestPath" | awk -F "\t" -v sampleIDColumn=$(expr $sampleIDColumn + 1) -v tumorPurityColumn=$(expr $tumorPurityColumn + 1) -v somaticStatusColumn=$(expr $somaticStatusColumn + 1) '{print $sampleIDColumn"_"$tumorPurityColumn"_"$somaticStatusColumn}'); do
+  cmd="bsub \
+  -W ${clusterTime} \
+  -n ${clusterCPUNum} \
+  -R 'rusage[mem=${clusterMemory}]' \
+  -J 'echo.${sampleID_Tumor}' \
+  -o '${echoLogDirectory}/${sampleID_Tumor}.${ts}.stdout' \
+  -e '${echoLogDirectory}/${sampleID_Tumor}.${ts}.stderr' \
+  ./preProcess_multipleSamples_v2.sh ${CONFIG_FILE} \
+  $seqType \
+  $i"
 
-      sampleID_Tumor=$(echo "$i" | awk -F'_' '{print $1}')
+    echo "Sample=$sampleID_Tumor"
+    echo "$cmd"
+    echo "submitting Job for Sample=$sampleID_Tumor"
+    eval "$cmd"
+    echo
 
-      cmd="bsub \
-      -W 72:00 \
-      -n 4 \
-      -R 'rusage[mem=64]' \
-      -J 'echo.${sampleID_Tumor}' \
-      -o '${logDir}/${sampleID_Tumor}.${ts}.stdout' \
-      -e '${logDir}/${sampleID_Tumor}.${ts}.stderr' \
-      ./preProcess_multipleSamples_v2.sh \
-      $seqType \
-      $i"
-
-        echo "Sample=$sampleID_Tumor"
-        echo "$cmd"
-        echo "submitting Job for Sample=$sampleID_Tumor"
-        eval "$cmd"
-        echo
-
-        count=$((count+1))
-
-        # exit 1
-      
-    done
-
-  fi
-
+    count=$((count+1))
+  
 done
 
 
